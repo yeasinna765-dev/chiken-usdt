@@ -1,31 +1,919 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>CHIKEN USDT</title><script src="https://telegram.org/js/telegram-web-app.js"></script><style>
-*{box-sizing:border-box}body{margin:0;background:#10190f;color:#fff;font-family:Arial,sans-serif;padding-bottom:78px}.wrap{max-width:520px;margin:auto;padding:14px}.top{background:#263d20;border-radius:18px;padding:18px;text-align:center}.balance{font-size:30px;font-weight:bold;color:#b8f36b}.card{background:#1d2c19;border:1px solid #45613b;border-radius:14px;padding:14px;margin:12px 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.btn{border:0;border-radius:10px;background:#9bdc52;color:#15220e;font-weight:bold;padding:12px;width:100%;margin-top:8px}.secondary{background:#31472a;color:#fff}.nav{position:fixed;bottom:0;left:0;right:0;background:#1b2a17;display:flex;justify-content:space-around;padding:10px}.nav button{background:none;color:#fff;border:0;font-size:12px}.hidden{display:none}.muted{color:#b8c5af;font-size:13px}input,select{width:100%;padding:12px;border-radius:9px;border:1px solid #607653;background:#10190f;color:white;margin:6px 0}.hen{min-height:150px}.status{padding:10px;background:#334b2b;border-radius:10px;margin:8px 0}
-</style></head><body><div class="wrap"><div id="loading" class="top">🐔 CHIKEN USDT<br><br>Loading your farm...</div><main id="app" class="hidden">
-<div class="top"><div>🐔 CHIKEN USDT</div><div class="balance" id="balance">$0.0000</div><div class="muted">Your wallet balance</div></div>
-<section id="home"><div class="card"><h3>🌾 Your Farm</h3><p>Eggs: <b id="eggs">0</b> | Corn: <b id="corn">0</b></p><p class="muted">Eggs per day: <span id="epd">0</span></p><button class="btn" onclick="convertEggs()">Convert Eggs to USDT</button></div><h3>🐣 Hen Shop</h3><div id="hens" class="grid"></div><h3>🌽 Corn Shop</h3><div id="cornshop" class="grid"></div></section>
-<section id="wallet" class="hidden"><div class="card"><h3>Deposit (TON Network only)</h3><p class="muted">Send only the selected asset on TON Network. Submit transaction hash for admin review.</p><div id="depositaddr" class="status">TON address not configured</div><select id="dasset"><option value="USDT_TON">USDT (TON)</option><option value="GRAM_TON">GRAM (TON)</option></select><input id="damount" type="number" placeholder="Amount"><input id="dhash" placeholder="TON transaction hash"><button class="btn" onclick="deposit()">Submit Deposit</button></div><div class="card"><h3>Withdraw</h3><select id="wasset"><option value="USDT_TON">USDT (TON)</option><option value="GRAM_TON">GRAM (TON)</option></select><input id="wamount" type="number" placeholder="Amount"><input id="waddress" placeholder="Your TON wallet address"><button class="btn" onclick="withdraw()">Request Withdrawal</button></div><div class="card"><h3>History</h3><div id="history"></div></div></section>
-<section id="friends" class="hidden"><div class="card"><h3>👥 Invite Friends</h3><p>Share your Telegram bot link with friends.</p><button class="btn" onclick="shareRef()">Share Invite Link</button></div></section>
-<section id="admin" class="hidden"><div class="card"><h3>🔐 Admin Panel</h3><div id="admincontent">Loading...</div></div></section>
-</main></div><nav class="nav"><button onclick="show('home')">🏡<br>Home</button><button onclick="show('wallet')">💳<br>Wallet</button><button onclick="show('friends')">👥<br>Friends</button><button id="adminnav" class="hidden" onclick="show('admin')">⚙️<br>Admin</button></nav>
-<script>
-const tg=window.Telegram?.WebApp; tg?.ready(); tg?.expand();
-const auth='tma '+(tg?.initData||'');
-let me=null;
-async function api(path,method='GET',body=null){let r=await fetch(path,{method,headers:{'Authorization':auth,'Content-Type':'application/json'},body:body?JSON.stringify(body):null});let j=await r.json();if(!r.ok)throw Error(j.detail||'Request failed');return j}
-function show(id){['home','wallet','friends','admin'].forEach(x=>document.getElementById(x).classList.toggle('hidden',x!==id));if(id==='wallet')loadHistory();if(id==='admin')loadAdmin()}
-function money(n){return '$'+Number(n||0).toFixed(4)}
-async function load(){try{me=await api('/api/me');document.getElementById('loading').classList.add('hidden');document.getElementById('app').classList.remove('hidden');document.getElementById('balance').textContent=money(me.balance);document.getElementById('eggs').textContent=me.eggs;document.getElementById('corn').textContent=me.corn;document.getElementById('epd').textContent=me.eggs_per_day;document.getElementById('depositaddr').textContent=me.deposit_address||'Admin has not set a TON deposit address';document.getElementById('adminnav').classList.toggle('hidden',!me.admin);
-document.getElementById('hens').innerHTML=me.hens.map(x=>`<div class="card hen"><b>${x.name}</b><p>${money(x.price)}</p><p class="muted">${x.eggs_day.toLocaleString()} eggs/day</p><button class="btn" onclick="buy('hen',${x.id})">Buy</button></div>`).join('');
-document.getElementById('cornshop').innerHTML=me.corn_shop.map(x=>`<div class="card"><b>${x.name}</b><p>${money(x.price)}</p><p>${x.corn.toLocaleString()} corn</p><button class="btn" onclick="buy('corn',${x.id})">Buy</button></div>`).join('');
-}catch(e){document.getElementById('loading').innerHTML='Login error: '+e.message+'<br>Open this app from your Telegram bot.'}}
-async function buy(t,id){try{await api('/api/buy','POST',{item_type:t,item_id:id});alert('Purchase successful');load()}catch(e){alert(e.message)}}
-async function convertEggs(){try{let x=await api('/api/convert-eggs','POST',{});alert('Converted '+money(x.amount));load()}catch(e){alert(e.message)}}
-async function deposit(){try{await api('/api/deposit','POST',{asset:dasset.value,amount:Number(damount.value),tx_hash:dhash.value});alert('Submitted for review');dhash.value='';loadHistory()}catch(e){alert(e.message)}}
-async function withdraw(){try{await api('/api/withdraw','POST',{asset:wasset.value,amount:Number(wamount.value),address:waddress.value});alert('Withdrawal request submitted');load()}catch(e){alert(e.message)}}
-async function loadHistory(){try{let h=await api('/api/history');history.innerHTML=[...h.deposits.map(x=>`Deposit ${x.asset} ${x.amount} — ${x.status}`),...h.withdrawals.map(x=>`Withdraw ${x.asset} ${x.amount} — ${x.status}`)].join('<br>')||'No history'}catch(e){history.textContent=e.message}}
-function shareRef(){let link='https://t.me/'+(window.BOT_USERNAME||'Chikenusdtbot')+'?start='+me.id;tg?.openTelegramLink('https://t.me/share/url?url='+encodeURIComponent(link))}
-async function loadAdmin(){try{let a=await api('/api/admin/overview');admincontent.innerHTML=`Users: ${a.users}<h4>Pending deposits</h4>`+a.deposits.map(x=>`<div class="status">#${x.id} User ${x.user_id} ${x.asset} ${x.amount}<br>${x.tx_hash}<button class="btn" onclick="review('deposit',${x.id},'approve')">Approve</button><button class="btn secondary" onclick="review('deposit',${x.id},'reject')">Reject</button></div>`).join('')+`<h4>Pending withdrawals</h4>`+a.withdrawals.map(x=>`<div class="status">#${x.id} User ${x.user_id} ${x.asset} ${x.amount}<br>${x.address}<button class="btn" onclick="review('withdrawal',${x.id},'approve')">Mark Paid</button><button class="btn secondary" onclick="review('withdrawal',${x.id},'reject')">Reject & refund</button></div>`).join('')+`<h4>Settings</h4><input id="newaddr" placeholder="TON deposit address" value="${a.settings.deposit_address||''}"><button class="btn" onclick="saveSetting('deposit_address',newaddr.value)">Save address</button><input id="mindep" type="number" placeholder="Minimum deposit" value="${a.settings.min_deposit}"><button class="btn" onclick="saveSetting('min_deposit',mindep.value)">Save min deposit</button><button class="btn secondary" onclick="saveSetting('maintenance','${a.settings.maintenance==='1'?'0':'1'}')">Toggle maintenance</button>`}catch(e){admincontent.textContent=e.message}}
-async function review(kind,id,action){try{await api('/api/admin/review','POST',{kind,request_id:id,action});loadAdmin()}catch(e){alert(e.message)}}
-async function saveSetting(key,value){try{await api('/api/admin/setting','POST',{key,value});alert('Saved');loadAdmin()}catch(e){alert(e.message)}}
-load();
-</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+    <title>CHIKEN USDT</title>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <!-- ================= CSS DESIGN ================= -->
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #10190f;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            padding-bottom: 78px;
+        }
+
+        .wrap {
+            max-width: 520px;
+            margin: auto;
+            padding: 14px;
+        }
+
+        .top {
+            background: #263d20;
+            border-radius: 18px;
+            padding: 18px;
+            text-align: center;
+        }
+
+        .balance {
+            font-size: 30px;
+            font-weight: bold;
+            color: #b8f36b;
+        }
+
+        .card {
+            background: #1d2c19;
+            border: 1px solid #45613b;
+            border-radius: 14px;
+            padding: 14px;
+            margin: 12px 0;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .btn {
+            border: 0;
+            border-radius: 10px;
+            background: #9bdc52;
+            color: #15220e;
+            font-weight: bold;
+            padding: 12px;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .secondary {
+            background: #31472a;
+            color: #fff;
+        }
+
+        .nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #1b2a17;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px;
+        }
+
+        .nav button {
+            background: none;
+            color: #fff;
+            border: 0;
+            font-size: 12px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .muted {
+            color: #b8c5af;
+            font-size: 13px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 12px;
+            border-radius: 9px;
+            border: 1px solid #607653;
+            background: #10190f;
+            color: white;
+            margin: 6px 0;
+        }
+
+        .hen {
+            min-height: 150px;
+        }
+
+        .status {
+            padding: 10px;
+            background: #334b2b;
+            border-radius: 10px;
+            margin: 8px 0;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <!-- ================= LOADING SCREEN ================= -->
+
+    <div class="wrap">
+
+        <div id="loading" class="top">
+            🐔 CHIKEN USDT
+            <br><br>
+            Loading your farm...
+        </div>
+
+        <!-- ================= MAIN APP ================= -->
+
+        <main id="app" class="hidden">
+
+            <!-- HEADER / BALANCE -->
+
+            <div class="top">
+                <div>🐔 CHIKEN USDT</div>
+
+                <div class="balance" id="balance">
+                    $0.0000
+                </div>
+
+                <div class="muted">
+                    Your wallet balance
+                </div>
+            </div>
+
+            <!-- ================= HOME PAGE ================= -->
+
+            <section id="home">
+
+                <div class="card">
+
+                    <h3>🌾 Your Farm</h3>
+
+                    <p>
+                        Eggs:
+                        <b id="eggs">0</b>
+                        |
+                        Corn:
+                        <b id="corn">0</b>
+                    </p>
+
+                    <p class="muted">
+                        Eggs per day:
+                        <span id="epd">0</span>
+                    </p>
+
+                    <button class="btn" onclick="convertEggs()">
+                        Convert Eggs to USDT
+                    </button>
+
+                </div>
+
+                <h3>🐣 Hen Shop</h3>
+
+                <div id="hens" class="grid"></div>
+
+                <h3>🌽 Corn Shop</h3>
+
+                <div id="cornshop" class="grid"></div>
+
+            </section>
+
+            <!-- ================= WALLET PAGE ================= -->
+
+            <section id="wallet" class="hidden">
+
+                <!-- DEPOSIT -->
+
+                <div class="card">
+
+                    <h3>Deposit (TON Network only)</h3>
+
+                    <p class="muted">
+                        Send only the selected asset on TON Network.
+                        Submit transaction hash for admin review.
+                    </p>
+
+                    <div id="depositaddr" class="status">
+                        TON address not configured
+                    </div>
+
+                    <select id="dasset">
+                        <option value="USDT_TON">
+                            USDT (TON)
+                        </option>
+
+                        <option value="GRAM_TON">
+                            GRAM (TON)
+                        </option>
+                    </select>
+
+                    <input
+                        id="damount"
+                        type="number"
+                        placeholder="Amount"
+                    >
+
+                    <input
+                        id="dhash"
+                        placeholder="TON transaction hash"
+                    >
+
+                    <button class="btn" onclick="deposit()">
+                        Submit Deposit
+                    </button>
+
+                </div>
+
+                <!-- WITHDRAW -->
+
+                <div class="card">
+
+                    <h3>Withdraw</h3>
+
+                    <select id="wasset">
+                        <option value="USDT_TON">
+                            USDT (TON)
+                        </option>
+
+                        <option value="GRAM_TON">
+                            GRAM (TON)
+                        </option>
+                    </select>
+
+                    <input
+                        id="wamount"
+                        type="number"
+                        placeholder="Amount"
+                    >
+
+                    <input
+                        id="waddress"
+                        placeholder="Your TON wallet address"
+                    >
+
+                    <button class="btn" onclick="withdraw()">
+                        Request Withdrawal
+                    </button>
+
+                </div>
+
+                <!-- HISTORY -->
+
+                <div class="card">
+
+                    <h3>History</h3>
+
+                    <div id="history"></div>
+
+                </div>
+
+            </section>
+
+            <!-- ================= FRIENDS PAGE ================= -->
+
+            <section id="friends" class="hidden">
+
+                <div class="card">
+
+                    <h3>👥 Invite Friends</h3>
+
+                    <p>
+                        Share your Telegram bot link with friends.
+                    </p>
+
+                    <button class="btn" onclick="shareRef()">
+                        Share Invite Link
+                    </button>
+
+                </div>
+
+            </section>
+
+            <!-- ================= ADMIN PANEL ================= -->
+
+            <section id="admin" class="hidden">
+
+                <div class="card">
+
+                    <h3>🔐 Admin Panel</h3>
+
+                    <div id="admincontent">
+                        Loading...
+                    </div>
+
+                </div>
+
+            </section>
+
+        </main>
+
+    </div>
+
+    <!-- ================= BOTTOM NAVIGATION ================= -->
+
+    <nav class="nav">
+
+        <button onclick="show('home')">
+            🏡
+            <br>
+            Home
+        </button>
+
+        <button onclick="show('wallet')">
+            💳
+            <br>
+            Wallet
+        </button>
+
+        <button onclick="show('friends')">
+            👥
+            <br>
+            Friends
+        </button>
+
+        <button
+            id="adminnav"
+            class="hidden"
+            onclick="show('admin')"
+        >
+            ⚙️
+            <br>
+            Admin
+        </button>
+
+    </nav>
+
+    <!-- ================= JAVASCRIPT ================= -->
+
+    <script>
+
+        // TELEGRAM WEB APP
+
+        const tg = window.Telegram?.WebApp;
+
+        tg?.ready();
+        tg?.expand();
+
+        const auth = 'tma ' + (tg?.initData || '');
+
+        let me = null;
+
+
+        // ================= API FUNCTION =================
+
+        async function api(path, method = 'GET', body = null) {
+
+            let r = await fetch(path, {
+                method,
+
+                headers: {
+                    'Authorization': auth,
+                    'Content-Type': 'application/json'
+                },
+
+                body: body ? JSON.stringify(body) : null
+            });
+
+            let j = await r.json();
+
+            if (!r.ok) {
+                throw Error(j.detail || 'Request failed');
+            }
+
+            return j;
+        }
+
+
+        // ================= PAGE NAVIGATION =================
+
+        function show(id) {
+
+            ['home', 'wallet', 'friends', 'admin'].forEach(x => {
+
+                document.getElementById(x)
+                    .classList.toggle('hidden', x !== id);
+
+            });
+
+            if (id === 'wallet') {
+                loadHistory();
+            }
+
+            if (id === 'admin') {
+                loadAdmin();
+            }
+        }
+
+
+        // ================= MONEY FORMAT =================
+
+        function money(n) {
+
+            return '$' + Number(n || 0).toFixed(4);
+
+        }
+
+
+        // ================= LOAD USER DATA =================
+
+        async function load() {
+
+            try {
+
+                me = await api('/api/me');
+
+                document.getElementById('loading')
+                    .classList.add('hidden');
+
+                document.getElementById('app')
+                    .classList.remove('hidden');
+
+
+                // USER BALANCE
+
+                document.getElementById('balance').textContent =
+                    money(me.balance);
+
+
+                // FARM DATA
+
+                document.getElementById('eggs').textContent =
+                    me.eggs;
+
+                document.getElementById('corn').textContent =
+                    me.corn;
+
+                document.getElementById('epd').textContent =
+                    me.eggs_per_day;
+
+
+                // DEPOSIT ADDRESS
+
+                document.getElementById('depositaddr').textContent =
+                    me.deposit_address ||
+                    'Admin has not set a TON deposit address';
+
+
+                // ADMIN BUTTON
+
+                document.getElementById('adminnav')
+                    .classList.toggle('hidden', !me.admin);
+
+
+                // HEN SHOP
+
+                document.getElementById('hens').innerHTML =
+                    me.hens.map(x => `
+
+                        <div class="card hen">
+
+                            <b>${x.name}</b>
+
+                            <p>${money(x.price)}</p>
+
+                            <p class="muted">
+                                ${x.eggs_day.toLocaleString()} eggs/day
+                            </p>
+
+                            <button
+                                class="btn"
+                                onclick="buy('hen', ${x.id})"
+                            >
+                                Buy
+                            </button>
+
+                        </div>
+
+                    `).join('');
+
+
+                // CORN SHOP
+
+                document.getElementById('cornshop').innerHTML =
+                    me.corn_shop.map(x => `
+
+                        <div class="card">
+
+                            <b>${x.name}</b>
+
+                            <p>${money(x.price)}</p>
+
+                            <p>
+                                ${x.corn.toLocaleString()} corn
+                            </p>
+
+                            <button
+                                class="btn"
+                                onclick="buy('corn', ${x.id})"
+                            >
+                                Buy
+                            </button>
+
+                        </div>
+
+                    `).join('');
+
+
+            } catch (e) {
+
+                document.getElementById('loading').innerHTML =
+                    'Login error: ' + e.message +
+                    '<br>Open this app from your Telegram bot.';
+
+            }
+
+        }
+
+
+        // ================= BUY HEN / CORN =================
+
+        async function buy(t, id) {
+
+            try {
+
+                await api('/api/buy', 'POST', {
+                    item_type: t,
+                    item_id: id
+                });
+
+                alert('Purchase successful');
+
+                load();
+
+            } catch (e) {
+
+                alert(e.message);
+
+            }
+
+        }
+
+
+        // ================= CONVERT EGGS =================
+
+        async function convertEggs() {
+
+            try {
+
+                let x = await api(
+                    '/api/convert-eggs',
+                    'POST',
+                    {}
+                );
+
+                alert('Converted ' + money(x.amount));
+
+                load();
+
+            } catch (e) {
+
+                alert(e.message);
+
+            }
+
+        }
+
+
+        // ================= DEPOSIT =================
+
+        async function deposit() {
+
+            try {
+
+                await api('/api/deposit', 'POST', {
+
+                    asset: document.getElementById('dasset').value,
+
+                    amount: Number(
+                        document.getElementById('damount').value
+                    ),
+
+                    tx_hash:
+                        document.getElementById('dhash').value
+
+                });
+
+                alert('Submitted for review');
+
+                document.getElementById('dhash').value = '';
+
+                loadHistory();
+
+            } catch (e) {
+
+                alert(e.message);
+
+            }
+
+        }
+
+
+        // ================= WITHDRAW =================
+
+        async function withdraw() {
+
+            try {
+
+                await api('/api/withdraw', 'POST', {
+
+                    asset: document.getElementById('wasset').value,
+
+                    amount: Number(
+                        document.getElementById('wamount').value
+                    ),
+
+                    address:
+                        document.getElementById('waddress').value
+
+                });
+
+                alert('Withdrawal request submitted');
+
+                load();
+
+            } catch (e) {
+
+                alert(e.message);
+
+            }
+
+        }
+
+
+        // ================= TRANSACTION HISTORY =================
+
+        async function loadHistory() {
+
+            const historyBox =
+                document.getElementById('history');
+
+            try {
+
+                let h = await api('/api/history');
+
+                historyBox.innerHTML = [
+
+                    ...h.deposits.map(x =>
+                        `Deposit ${x.asset} ${x.amount} — ${x.status}`
+                    ),
+
+                    ...h.withdrawals.map(x =>
+                        `Withdraw ${x.asset} ${x.amount} — ${x.status}`
+                    )
+
+                ].join('<br>') || 'No history';
+
+            } catch (e) {
+
+                historyBox.textContent = e.message;
+
+            }
+
+        }
+
+
+        // ================= REFERRAL SHARE =================
+
+        function shareRef() {
+
+            let link =
+                'https://t.me/' +
+                (window.BOT_USERNAME || 'Chikenusdtbot') +
+                '?start=' + me.id;
+
+            tg?.openTelegramLink(
+                'https://t.me/share/url?url=' +
+                encodeURIComponent(link)
+            );
+
+        }
+
+
+        // ================= ADMIN PANEL =================
+
+        async function loadAdmin() {
+
+            const adminBox =
+                document.getElementById('admincontent');
+
+            try {
+
+                let a = await api('/api/admin/overview');
+
+
+                // USERS
+
+                adminBox.innerHTML = `
+                    Users: ${a.users}
+                    <h4>Pending deposits</h4>
+                `;
+
+
+                // PENDING DEPOSITS
+
+                adminBox.innerHTML +=
+
+                    a.deposits.map(x => `
+
+                        <div class="status">
+
+                            #${x.id}
+                            User ${x.user_id}
+                            ${x.asset}
+                            ${x.amount}
+
+                            <br>
+
+                            ${x.tx_hash}
+
+                            <button
+                                class="btn"
+                                onclick="review('deposit', ${x.id}, 'approve')"
+                            >
+                                Approve
+                            </button>
+
+                            <button
+                                class="btn secondary"
+                                onclick="review('deposit', ${x.id}, 'reject')"
+                            >
+                                Reject
+                            </button>
+
+                        </div>
+
+                    `).join('');
+
+
+                // PENDING WITHDRAWALS
+
+                adminBox.innerHTML +=
+                    '<h4>Pending withdrawals</h4>';
+
+                adminBox.innerHTML +=
+
+                    a.withdrawals.map(x => `
+
+                        <div class="status">
+
+                            #${x.id}
+                            User ${x.user_id}
+                            ${x.asset}
+                            ${x.amount}
+
+                            <br>
+
+                            ${x.address}
+
+                            <button
+                                class="btn"
+                                onclick="review('withdrawal', ${x.id}, 'approve')"
+                            >
+                                Mark Paid
+                            </button>
+
+                            <button
+                                class="btn secondary"
+                                onclick="review('withdrawal', ${x.id}, 'reject')"
+                            >
+                                Reject & refund
+                            </button>
+
+                        </div>
+
+                    `).join('');
+
+
+                // ADMIN SETTINGS
+
+                adminBox.innerHTML += `
+
+                    <h4>Settings</h4>
+
+                    <input
+                        id="newaddr"
+                        placeholder="TON deposit address"
+                        value="${a.settings.deposit_address || ''}"
+                    >
+
+                    <button
+                        class="btn"
+                        onclick="saveSetting(
+                            'deposit_address',
+                            document.getElementById('newaddr').value
+                        )"
+                    >
+                        Save address
+                    </button>
+
+                    <input
+                        id="mindep"
+                        type="number"
+                        placeholder="Minimum deposit"
+                        value="${a.settings.min_deposit}"
+                    >
+
+                    <button
+                        class="btn"
+                        onclick="saveSetting(
+                            'min_deposit',
+                            document.getElementById('mindep').value
+                        )"
+                    >
+                        Save min deposit
+                    </button>
+
+                    <button
+                        class="btn secondary"
+                        onclick="saveSetting(
+                            'maintenance',
+                            '${a.settings.maintenance === '1' ? '0' : '1'}'
+                        )"
+                    >
+                        Toggle maintenance
+                    </button>
+
+                `;
+
+            } catch (e) {
+
+                adminBox.textContent = e.message;
+
+            }
+
+        }
+
+
+        // ================= ADMIN REVIEW =================
+
+        async function review(kind, id, action) {
+
+            try {
+
+                await api('/api/admin/review', 'POST', {
+
+                    kind: kind,
+                    request_id: id,
+                    action: action
+
+                });
+
+                loadAdmin();
+
+            } catch (e) {
+
+                alert(e.message);
+
+            }
+
+        }
+
+
+        // ================= SAVE ADMIN SETTINGS =================
+
+        async function saveSetting(key, value) {
+
+            try {
+
+                await api('/api/admin/setting', 'POST', {
+
+                    key: key,
+                    value: value
+
+                });
+
+                alert('Saved');
+
+                loadAdmin();
+
+            } catch (e) {
+
+                alert(e.message);
+
+            }
+
+        }
+
+
+        // ================= START APP =================
+
+        load();
+
+    </script>
+
+</body>
+                                                    </html>
