@@ -1,1 +1,0 @@
-# CHIKEN USDT application package
